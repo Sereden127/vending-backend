@@ -3,66 +3,38 @@ import cors from "cors";
 
 const app = express();
 
-// 🔥 CORS correcto
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type"]
-}));
-
-// 🔥 BODY PARSER
+app.use(cors({ origin: "*" }));
 app.use(express.json());
 
-// 🔥 HEALTH CHECK
 app.get("/", (req, res) => {
-  res.send("Backend vending activo (SANDBOX OK) ✔");
+  res.send("Backend vending activo ✔");
 });
 
-// 🔥 CREATE PAYMENT (SANDBOX CONSISTENTE)
 app.post("/create-payment", (req, res) => {
 
-  try {
+  const { amount, seleccion, email } = req.body;
 
-    const { amount, seleccion, email } = req.body;
+  const orderId = "ORD-" + Date.now();
 
-    console.log("SANDBOX REQUEST:", req.body);
+  // 🔥 FORMATO COMPATIBLE CON TU SISTEMA ORIGINAL
+  const merchant = {
+    Ds_Order: orderId,
+    Ds_Amount: amount,
+    Ds_Currency: "978",
+    Ds_MerchantData: seleccion,
+    Ds_ConsumerLanguage: "1"
+  };
 
-    const orderId = "ORD-" + Date.now();
+  const datos = Buffer.from(JSON.stringify(merchant)).toString("base64");
 
-    // 🔥 ESTRUCTURA ESTABLE (COMPATIBLE CON TU RETORNO)
-    const payload = {
-      Ds_Order: orderId,
-      Ds_Amount: amount,
-      Ds_Currency: "978",
-      Ds_MerchantData: {
-        seleccion,
-        email
-      }
-    };
-
-    const Ds_MerchantParameters = Buffer
-      .from(JSON.stringify(payload))
-      .toString("base64");
-
-    return res.json({
-      orderId,
-      Ds_MerchantParameters,
-      Ds_Signature: "SANDBOX_SIGNATURE"
-    });
-
-  } catch (err) {
-    console.error("ERROR BACKEND:", err);
-
-    return res.status(500).json({
-      error: "Backend error",
-      detail: err.message
-    });
-  }
+  return res.json({
+    orderId,
+    Ds_MerchantParameters: datos,
+    Ds_Signature: "SANDBOX"
+  });
 });
 
-// 🔥 PORT RENDER
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
-  console.log("🚀 Backend vending activo en puerto", PORT);
+  console.log("Backend OK");
 });
