@@ -6,6 +6,10 @@ app.use(express.json());
 
 const SECRET = "MI_CLAVE";
 
+app.get("/", (req, res) => {
+  res.send("Backend vending activo ✔");
+});
+
 app.post("/create-payment", (req, res) => {
 
   const data = req.body;
