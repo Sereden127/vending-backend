@@ -1,21 +1,20 @@
 import express from "express";
+import cors from "cors";
 import crypto from "crypto";
 
 const app = express();
 
-// 🔥 IMPORTANTE: obligatorio en Render
+// 🔥 CORS REAL (ESTO ES LO QUE TE FALTABA)
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type"]
+}));
+
+// 🔥 IMPORTANTE EN RENDER
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// 🔥 CORS básico (evita problemas desde frontend)
-app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  next();
-});
-
-// 🔥 HEALTH CHECK
+// 🔥 TEST DE VIDA
 app.get("/", (req, res) => {
   res.send("Backend vending activo ✔");
 });
@@ -24,20 +23,19 @@ app.get("/", (req, res) => {
 app.post("/create-payment", (req, res) => {
   try {
 
-    console.log("📩 REQUEST RECIBIDA:", req.body);
+    console.log("📩 REQUEST:", req.body);
 
     const { amount, seleccion, email } = req.body;
 
     if (!amount || !seleccion) {
       return res.status(400).json({
-        error: "Faltan datos (amount o seleccion)"
+        error: "Faltan datos"
       });
     }
 
     // 🔥 ORDER ID AUTOMÁTICO
     const orderId = "ORD-" + Date.now();
 
-    // 🔥 PARAMETROS (SIMULACIÓN TPV)
     const merchant = {
       Ds_Order: orderId,
       Ds_Amount: amount,
@@ -50,13 +48,11 @@ app.post("/create-payment", (req, res) => {
 
     const base64 = Buffer.from(JSON.stringify(merchant)).toString("base64");
 
-    // 🔐 FIRMA (REEMPLAZA MI_CLAVE por tu clave real)
     const signature = crypto
       .createHmac("sha256", "MI_CLAVE")
       .update(base64)
       .digest("base64");
 
-    // 🔥 RESPUESTA
     return res.json({
       orderId,
       Ds_MerchantParameters: base64,
@@ -64,16 +60,16 @@ app.post("/create-payment", (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ ERROR BACKEND:", err);
+    console.error("ERROR:", err);
 
     return res.status(500).json({
-      error: "Error interno en backend",
+      error: "Error interno",
       detail: err.message
     });
   }
 });
 
-// 🔥 PUERTO RENDER
+// 🔥 PORT (RENDER O LOCAL)
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
