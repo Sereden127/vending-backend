@@ -6,72 +6,74 @@ const app = express();
 app.use(cors({ origin: "*" }));
 app.use(express.json());
 
-/**
- * 🔥 SIMULACIÓN DE BASE DE DATOS EN MEMORIA
- * (luego esto se sustituye por DB real o Fersomatic API)
- */
+// 🔥 “BASE DE DATOS” EN MEMORIA
 const orders = {};
 
-// 🔹 HEALTH CHECK
+// 🟢 HEALTH CHECK
 app.get("/", (req, res) => {
   res.send("Backend vending activo ✔");
 });
 
-/**
- * 🔹 CREAR PEDIDO
- * Esto NO paga nada. Solo crea orden.
- */
+// 🟢 CREAR PEDIDO (TU NUEVO SISTEMA)
 app.post("/create-order", (req, res) => {
 
-  const { amount, seleccion } = req.body;
+  const { maquina, producto, importe } = req.body;
+
+  if (!maquina || !producto) {
+    return res.status(400).json({
+      error: "Faltan datos (maquina o producto)"
+    });
+  }
 
   const orderId = "ORD-" + Date.now();
 
   orders[orderId] = {
     orderId,
-    amount,
-    seleccion,
-    status: "PENDING"
+    maquina,
+    producto,
+    importe: Number(importe ?? 0), // 🔥 puedes poner 0 o 0.01
+    status: "PENDING",
+    createdAt: new Date().toISOString()
   };
 
-  // 🔥 AQUÍ IRÍA EL TPV REAL DE FERSOMATIC
-  // ahora lo simulamos como URL de pago externa
-  const paymentUrl = `https://fersomaticweb.onrender.com/pago-ok-seleccion?orderId=${orderId}`;
+  console.log("🟢 Pedido creado:", orders[orderId]);
 
   return res.json({
     orderId,
-    paymentUrl
+    status: "PENDING"
   });
 });
 
-/**
- * 🔹 CONSULTAR ESTADO
- */
+// 🟢 VER PEDIDO
 app.get("/order/:id", (req, res) => {
 
   const order = orders[req.params.id];
 
   if (!order) {
-    return res.status(404).json({ error: "Order not found" });
+    return res.status(404).json({
+      error: "Order no encontrado"
+    });
   }
 
   res.json(order);
 });
 
-/**
- * 🔹 SIMULAR CONFIRMACIÓN DE TPV (ESTO LUEGO LO HARÁ FERSOMATIC REAL)
- */
-app.post("/confirm-payment", (req, res) => {
+// 🟢 (TEMPORAL) MARCAR COMO PAGADO
+app.post("/mark-paid", (req, res) => {
 
   const { orderId } = req.body;
 
   if (!orders[orderId]) {
-    return res.status(404).json({ error: "Order not found" });
+    return res.status(404).json({
+      error: "Order no encontrado"
+    });
   }
 
   orders[orderId].status = "PAID";
 
-  return res.json({
+  console.log("💰 Pedido pagado:", orders[orderId]);
+
+  res.json({
     ok: true,
     orderId,
     status: "PAID"
