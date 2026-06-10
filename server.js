@@ -3,64 +3,81 @@ import cors from "cors";
 
 const app = express();
 
-// 🔥 CORS
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type"]
-}));
-
-// 🔥 JSON PARSER
+app.use(cors({ origin: "*" }));
 app.use(express.json());
 
-// 🔥 HEALTH CHECK
+/**
+ * 🔥 SIMULACIÓN DE BASE DE DATOS EN MEMORIA
+ * (luego esto se sustituye por DB real o Fersomatic API)
+ */
+const orders = {};
+
+// 🔹 HEALTH CHECK
 app.get("/", (req, res) => {
   res.send("Backend vending activo ✔");
 });
 
-// 🔥 CREATE PAYMENT (SANDBOX COHERENTE)
-app.post("/create-payment", (req, res) => {
+/**
+ * 🔹 CREAR PEDIDO
+ * Esto NO paga nada. Solo crea orden.
+ */
+app.post("/create-order", (req, res) => {
 
-  try {
+  const { amount, seleccion } = req.body;
 
-    const { amount, seleccion, email } = req.body;
+  const orderId = "ORD-" + Date.now();
 
-    console.log("REQUEST:", req.body);
+  orders[orderId] = {
+    orderId,
+    amount,
+    seleccion,
+    status: "PENDING"
+  };
 
-    const orderId = "ORD-" + Date.now();
+  // 🔥 AQUÍ IRÍA EL TPV REAL DE FERSOMATIC
+  // ahora lo simulamos como URL de pago externa
+  const paymentUrl = `https://fersomaticweb.onrender.com/pago-ok-seleccion?orderId=${orderId}`;
 
-    // 🔥 PAYLOAD COMPATIBLE CON VALIDACIÓN DE RETORNO
-    const merchant = {
-      Ds_Order: String(orderId),
-      Ds_Amount: String(amount),
-      Ds_Currency: "978",
-      Ds_Response: "0000",          // ✔ CLAVE: simula pago OK
-      Ds_MerchantData: String(seleccion),
-      Ds_ConsumerLanguage: "1"
-    };
-
-    const Ds_MerchantParameters = Buffer
-      .from(JSON.stringify(merchant))
-      .toString("base64");
-
-    return res.json({
-      orderId,
-      Ds_MerchantParameters,
-      Ds_Signature: "SANDBOX_SIGNATURE"
-    });
-
-  } catch (err) {
-
-    console.error("ERROR:", err);
-
-    return res.status(500).json({
-      error: "backend_error",
-      detail: err.message
-    });
-  }
+  return res.json({
+    orderId,
+    paymentUrl
+  });
 });
 
-// 🔥 PORT
+/**
+ * 🔹 CONSULTAR ESTADO
+ */
+app.get("/order/:id", (req, res) => {
+
+  const order = orders[req.params.id];
+
+  if (!order) {
+    return res.status(404).json({ error: "Order not found" });
+  }
+
+  res.json(order);
+});
+
+/**
+ * 🔹 SIMULAR CONFIRMACIÓN DE TPV (ESTO LUEGO LO HARÁ FERSOMATIC REAL)
+ */
+app.post("/confirm-payment", (req, res) => {
+
+  const { orderId } = req.body;
+
+  if (!orders[orderId]) {
+    return res.status(404).json({ error: "Order not found" });
+  }
+
+  orders[orderId].status = "PAID";
+
+  return res.json({
+    ok: true,
+    orderId,
+    status: "PAID"
+  });
+});
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
